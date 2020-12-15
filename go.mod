@@ -1,4 +1,4 @@
-module sbar
+module github.com/hujun-open/sbar
 
 go 1.14
 
