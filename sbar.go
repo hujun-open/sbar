@@ -6,10 +6,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"fyne.io/fyne"
-	"fyne.io/fyne/canvas"
-	"fyne.io/fyne/theme"
-	"fyne.io/fyne/widget"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 )
 
 // OffsetChangeHandler is the type handler function get called whenever scroller offset changes
@@ -56,9 +56,9 @@ func (sbar *SBar) DragEnd() {
 
 // Dragged implements fyne.Draggable interface
 func (sbar *SBar) Dragged(evt *fyne.DragEvent) {
-	cord := evt.Position.Y + evt.DraggedY
+	cord := evt.Position.Y + evt.Dragged.DY
 	if sbar.horizontal {
-		cord = evt.Position.X + evt.DraggedX
+		cord = evt.Position.X + evt.Dragged.DX
 	}
 	select {
 	case sbar.actChan <- posAction{act: actionDrag, val: cord}:
@@ -113,7 +113,7 @@ const (
 
 type posAction struct {
 	act int
-	val int
+	val float32
 }
 
 type sbarRender struct {
@@ -148,10 +148,10 @@ func (sbrr *sbarRender) Layout(layoutsize fyne.Size) {
 	sbrr.mux.RLock()
 	sbrr.bar.Resize(sbrr.curBarSize)
 	x := layoutsize.Width - sbrr.curBarSize.Width
-	y := sbrr.offsetToCord(layoutsize.Height)
+	y := sbrr.offsetToCord(int(layoutsize.Height))
 	if sbrr.sbar.horizontal {
 		y = layoutsize.Height - sbrr.curBarSize.Height
-		x = sbrr.offsetToCord(layoutsize.Width)
+		x = sbrr.offsetToCord(int(layoutsize.Width))
 	}
 	sbrr.mux.RUnlock()
 	sbrr.bar.Move(fyne.NewPos(x, y))
@@ -170,7 +170,7 @@ func (sbrr *sbarRender) MinSize() fyne.Size {
 func (sbrr *sbarRender) Objects() []fyne.CanvasObject {
 	return []fyne.CanvasObject{sbrr.overallContainer}
 }
-func (sbrr *sbarRender) calCordToOffset(newCord int) uint32 {
+func (sbrr *sbarRender) calCordToOffset(newCord float32) uint32 {
 	// debug.PrintStack()
 	var newoffset uint32
 	if sbrr.sbar.horizontal {
@@ -187,7 +187,7 @@ func (sbrr *sbarRender) calCordToOffset(newCord int) uint32 {
 	return newoffset
 }
 
-func (sbrr *sbarRender) cordToOffset(newCord int) {
+func (sbrr *sbarRender) cordToOffset(newCord float32) {
 	newoffset := sbrr.calCordToOffset(newCord)
 	atomic.StoreUint32(sbrr.sbar.offset, newoffset)
 	if sbrr.sbar.offsetH != nil {
@@ -195,12 +195,12 @@ func (sbrr *sbarRender) cordToOffset(newCord int) {
 	}
 }
 
-func (sbrr *sbarRender) offsetToCord(overall int) int {
-	r := ((overall - sbrr.curBarSize.Height) * int(atomic.LoadUint32(sbrr.sbar.offset))) / OffsetResolution
+func (sbrr *sbarRender) offsetToCord(overall int) float32 {
+	r := ((overall - int(sbrr.curBarSize.Height)) * int(atomic.LoadUint32(sbrr.sbar.offset))) / OffsetResolution
 	if sbrr.sbar.horizontal {
-		r = ((overall - sbrr.curBarSize.Width) * int(atomic.LoadUint32(sbrr.sbar.offset))) / OffsetResolution
+		r = ((overall - int(sbrr.curBarSize.Width)) * int(atomic.LoadUint32(sbrr.sbar.offset))) / OffsetResolution
 	}
-	return r
+	return float32(r)
 }
 
 func (sbrr *sbarRender) Refresh() {
@@ -208,7 +208,7 @@ func (sbrr *sbarRender) Refresh() {
 	case a := <-sbrr.sbar.actChan:
 		switch a.act {
 		case actionDrag:
-			var newx, newy int
+			var newx, newy float32
 			pos := sbrr.bar.Position()
 			if !sbrr.sbar.horizontal {
 				newx = pos.X
@@ -237,13 +237,13 @@ func (sbrr *sbarRender) Refresh() {
 				sbrr.cordToOffset(newx)
 			}
 		case actionAdmin:
-			var newx, newy int
+			var newx, newy float32
 			if !sbrr.sbar.horizontal {
 				newx = sbrr.bar.Position().X
-				newy = sbrr.offsetToCord(sbrr.sbar.Size().Height)
+				newy = sbrr.offsetToCord(int(sbrr.sbar.Size().Height))
 			} else {
 				newy = sbrr.bar.Position().Y
-				newx = sbrr.offsetToCord(sbrr.sbar.Size().Width)
+				newx = sbrr.offsetToCord(int(sbrr.sbar.Size().Width))
 			}
 			sbrr.bar.Move(fyne.NewPos(newx, newy))
 			sbrr.bar.Refresh()

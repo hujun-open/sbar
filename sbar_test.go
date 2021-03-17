@@ -4,13 +4,13 @@ package sbar
 import (
 	"testing"
 
-	"fyne.io/fyne"
-	"fyne.io/fyne/test"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/test"
 )
 
 type testInput struct {
-	startPos int
-	dragDist int
+	startPos float32
+	dragDist float32
 	expected uint32
 }
 
